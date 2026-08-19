@@ -1,6 +1,6 @@
 // src/api/client.js
 
-// ✅ No fallback to localhost – this will now fail if VITE_API_URL is not set
+// ✅ No fallback – environment variable must be set
 const API_URL = import.meta.env.VITE_API_URL;
 
 const apiCall = async (endpoint, options = {}) => {
@@ -11,17 +11,26 @@ const apiCall = async (endpoint, options = {}) => {
       ...options.headers,
     },
   });
+
   if (!response.ok) {
-    // Try to parse error as JSON; fallback to text if it's not JSON
     let errorMessage;
     try {
-      const errorJson = await response.json();
-      errorMessage = errorJson.error || 'API request failed';
+      // Read the response body as text first (once)
+      const text = await response.text();
+      try {
+        const json = JSON.parse(text);
+        errorMessage = json.error || 'API request failed';
+      } catch (_) {
+        // If parsing fails, use the raw text
+        errorMessage = text || 'API request failed';
+      }
     } catch (_) {
-      errorMessage = await response.text() || 'API request failed';
+      errorMessage = 'API request failed';
     }
     throw new Error(errorMessage);
   }
+
+  // Only read JSON for successful responses
   return response.json();
 };
 
