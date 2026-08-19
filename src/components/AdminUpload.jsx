@@ -1722,7 +1722,7 @@ const AdminUpload = () => {
 
       const editorSize = profileEditorRef.current?.clientWidth || 320;
       const outputSize = 800;
-      const image = new window.Image();
+      const image = document.createElement("img");
 
       image.onload = () => {
         try {
