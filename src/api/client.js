@@ -1,6 +1,7 @@
 // src/api/client.js
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// ✅ No fallback to localhost – this will now fail if VITE_API_URL is not set
+const API_URL = import.meta.env.VITE_API_URL;
 
 const apiCall = async (endpoint, options = {}) => {
   const response = await fetch(`${API_URL}${endpoint}`, {
@@ -11,8 +12,15 @@ const apiCall = async (endpoint, options = {}) => {
     },
   });
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'API request failed');
+    // Try to parse error as JSON; fallback to text if it's not JSON
+    let errorMessage;
+    try {
+      const errorJson = await response.json();
+      errorMessage = errorJson.error || 'API request failed';
+    } catch (_) {
+      errorMessage = await response.text() || 'API request failed';
+    }
+    throw new Error(errorMessage);
   }
   return response.json();
 };
