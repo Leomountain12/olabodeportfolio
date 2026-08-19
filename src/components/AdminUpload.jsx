@@ -1382,7 +1382,7 @@
 // export default AdminUpload;
 
 // src/components/AdminUpload.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Upload, X, Lock, Unlock, Image, Trash2, 
   Mail, FolderOpen, Settings, CheckCircle, 
@@ -1395,47 +1395,9 @@ import { categories as allCategories } from "../data/projects";
 import { getSocialConfig, saveSocialConfig } from "../data/socialConfig";
 import { defaultProjects } from "../data/defaultData";
 import { projectsApi, profileApi, messagesApi } from "../api/client";
-import Cropper from 'react-easy-crop';
-import 'react-easy-crop/react-easy-crop.css';
+import AvatarEditor from 'react-avatar-editor';
 
-// ==================== FIXED CROP HELPERS ====================
-const createImage = (url) =>
-  new Promise((resolve, reject) => {
-    const image = new Image();
-    image.addEventListener('load', () => resolve(image));
-    image.addEventListener('error', (error) => reject(error));
-    image.setAttribute('crossOrigin', 'anonymous');
-    image.src = url;
-  });
-
-const getCroppedImg = async (imageSrc, pixelCrop) => {
-  const image = await createImage(imageSrc);
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-
-  ctx.drawImage(
-    image,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
-  );
-
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      resolve(blob);
-    }, 'image/jpeg');
-  });
-};
-
-// ==================== CUSTOM TIKTOK ICON ====================
+// Custom TikTok Icon
 const TikTokIcon = ({ size = 20, className = "" }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -1453,7 +1415,6 @@ const TikTokIcon = ({ size = 20, className = "" }) => (
   </svg>
 );
 
-// ==================== MAIN COMPONENT ====================
 const AdminUpload = () => {
   // Auth states
   const [isAdmin, setIsAdmin] = useState(false);
@@ -1475,13 +1436,11 @@ const AdminUpload = () => {
   const [profileFile, setProfileFile] = useState(null);
   const [profilePreview, setProfilePreview] = useState(null);
   
-  // Crop states
+  // Crop states (using react-avatar-editor)
   const [showCropModal, setShowCropModal] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-  const [cropFile, setCropFile] = useState(null);
+  const editorRef = useRef(null);
   
   // Project image states
   const [projectImages, setProjectImages] = useState([]);
@@ -1583,66 +1542,49 @@ const AdminUpload = () => {
     setShowCropModal(false);
   };
 
-  // ==================== PROFILE IMAGE UPLOAD (WITH CROP) ====================
+  // ==================== PROFILE IMAGE WITH CROP (react-avatar-editor) ====================
   const handleProfileFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
       setCropImageSrc(event.target.result);
-      setCropFile(file);
+      setProfileFile(file);
       setShowCropModal(true);
     };
     reader.readAsDataURL(file);
   };
 
-  const onCropComplete = (croppedArea, croppedAreaPixels) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  };
-
   const onCropCancel = () => {
     setShowCropModal(false);
     setCropImageSrc(null);
-    setCropFile(null);
-    setCrop({ x: 0, y: 0 });
     setZoom(1);
-    setCroppedAreaPixels(null);
+    setProfileFile(null);
   };
 
   const uploadCroppedImage = async () => {
-    if (!cropFile || !croppedAreaPixels) {
-      alert("Please adjust the crop area.");
-      return;
-    }
+    if (!editorRef.current) return;
     setUploading(true);
     try {
-      const croppedBlob = await getCroppedImg(cropImageSrc, croppedAreaPixels);
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const result = await profileApi.uploadImage(event.target.result);
-          localStorage.setItem('profileImageUrl', result.url);
-          setImages([{ id: Date.now(), src: result.url, type: 'profile' }]);
-          setUploading(false);
-          setUploadSuccess(true);
-          alert("✅ Profile image uploaded successfully!");
-          setShowCropModal(false);
-          setCropImageSrc(null);
-          setCropFile(null);
-          setCrop({ x: 0, y: 0 });
-          setZoom(1);
-          setCroppedAreaPixels(null);
-          window.location.reload();
-        } catch (error) {
-          console.error("Upload error:", error);
-          alert("❌ Failed to upload image. Please try again.");
-          setUploading(false);
-        }
-      };
-      reader.readAsDataURL(croppedBlob);
+      // Get cropped image as a data URL (canvas)
+      const canvas = editorRef.current.getImageScaledToCanvas();
+      const dataUrl = canvas.toDataURL('image/jpeg');
+      
+      // Upload the base64 data
+      const result = await profileApi.uploadImage(dataUrl);
+      localStorage.setItem('profileImageUrl', result.url);
+      setImages([{ id: Date.now(), src: result.url, type: 'profile' }]);
+      setUploading(false);
+      setUploadSuccess(true);
+      alert("✅ Profile image uploaded successfully!");
+      setShowCropModal(false);
+      setCropImageSrc(null);
+      setZoom(1);
+      setProfileFile(null);
+      window.location.reload();
     } catch (error) {
-      console.error("Crop error:", error);
-      alert("❌ Failed to crop image. Please try again.");
+      console.error("Upload error:", error);
+      alert("❌ Failed to upload image. Please try again.");
       setUploading(false);
     }
   };
@@ -2662,13 +2604,13 @@ const AdminUpload = () => {
             </div>
           )}
 
-          {/* ============ CROP MODAL ============ */}
+          {/* ============ CROP MODAL (react-avatar-editor) ============ */}
           {showCropModal && cropImageSrc && (
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
               <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-slate-900">✂️ Crop Profile Photo</h3>
+                    <h3 className="text-lg font-bold text-slate-900">✂️ Adjust Profile Photo</h3>
                     <button
                       onClick={onCropCancel}
                       className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
@@ -2677,23 +2619,24 @@ const AdminUpload = () => {
                     </button>
                   </div>
 
-                  <div className="relative w-full h-80 bg-gray-100 rounded-lg overflow-hidden">
-                    <Cropper
+                  <div className="relative w-full h-80 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                    <AvatarEditor
+                      ref={editorRef}
                       image={cropImageSrc}
-                      crop={crop}
-                      zoom={zoom}
-                      aspect={1}
-                      cropShape="round"
-                      showGrid={false}
-                      onCropChange={setCrop}
-                      onZoomChange={setZoom}
-                      onCropComplete={onCropComplete}
+                      width={300}
+                      height={300}
+                      border={50}
+                      color={[255, 255, 255, 0.6]}
+                      scale={zoom}
+                      rotate={0}
+                      borderRadius={150} // makes it circular
+                      className="max-w-full max-h-full"
                     />
                   </div>
 
                   <div className="mt-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Zoom
+                      Zoom: {zoom.toFixed(2)}x
                     </label>
                     <input
                       type="range"
