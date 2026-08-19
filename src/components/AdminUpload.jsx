@@ -1,8 +1,10 @@
 
-// import { useState, useEffect } from "react";
+
+// import { useState, useEffect, useRef } from "react";
 // import { 
-//   Upload, X, Lock, Unlock, Image, Trash2, 
-//   Mail, FolderOpen, Settings, CheckCircle, 
+//   Upload, X, Lock, Unlock, 
+//   Image as LucideImage,   // ✅ FIX: renamed to avoid shadowing native Image
+//   Trash2, Mail, FolderOpen, Settings, CheckCircle, 
 //   Send, User, Briefcase, MessageCircle, Plus,
 //   ExternalLink, Edit, Save, Link as LinkIcon,
 //   Github, Eye, EyeOff, Phone, Twitter, Instagram, 
@@ -12,6 +14,7 @@
 // import { getSocialConfig, saveSocialConfig } from "../data/socialConfig";
 // import { defaultProjects } from "../data/defaultData";
 // import { projectsApi, profileApi, messagesApi } from "../api/client";
+// console.log("🚀 AdminUpload – version WITHOUT crop");
 
 // // Custom TikTok Icon (SVG)
 // const TikTokIcon = ({ size = 20, className = "" }) => (
@@ -51,6 +54,20 @@
 //   const [images, setImages] = useState([]);
 //   const [profileFile, setProfileFile] = useState(null);
 //   const [profilePreview, setProfilePreview] = useState(null);
+
+//   // Native browser profile-photo editor state (no extra dependency)
+//   const profileEditorRef = useRef(null);
+//   const [profileImageSize, setProfileImageSize] = useState({ width: 0, height: 0 });
+//   const [cropZoom, setCropZoom] = useState(1);
+//   const [cropX, setCropX] = useState(0);
+//   const [cropY, setCropY] = useState(0);
+//   const [isDraggingCrop, setIsDraggingCrop] = useState(false);
+//   const [cropDragStart, setCropDragStart] = useState({
+//     pointerX: 0,
+//     pointerY: 0,
+//     startX: 0,
+//     startY: 0
+//   });
   
 //   // Project image states
 //   const [projectImages, setProjectImages] = useState([]);
@@ -156,26 +173,229 @@
 //     localStorage.removeItem('adminLoggedIn');
 //     setProfileFile(null);
 //     setProfilePreview(null);
+//     setProfileImageSize({ width: 0, height: 0 });
+//     setCropZoom(1);
+//     setCropX(0);
+//     setCropY(0);
+//     setIsDraggingCrop(false);
 //     setProjectFile(null);
 //     setProjectPreview(null);
 //   };
 
 //   // ==================== PROFILE IMAGE FUNCTIONS ====================
-  
+
+//   const resetProfileCrop = () => {
+//     setCropZoom(1);
+//     setCropX(0);
+//     setCropY(0);
+//   };
+
+//   const handleProfileImageLoaded = (e) => {
+//     const img = e.currentTarget;
+//     setProfileImageSize({
+//       width: img.naturalWidth,
+//       height: img.naturalHeight
+//     });
+//     resetProfileCrop();
+//   };
+
 //   const handleProfileFileSelect = (e) => {
-//     const file = e.target.files[0];
-//     if (file) {
-//       setProfileFile(file);
-//       const reader = new FileReader();
-//       reader.onload = (event) => {
-//         setProfilePreview(event.target.result);
-//       };
-//       reader.readAsDataURL(file);
+//     const file = e.target.files?.[0];
+//     if (!file) return;
+
+//     if (!file.type.startsWith("image/")) {
+//       alert("Please select a valid image file.");
+//       e.target.value = "";
+//       return;
 //     }
+
+//     if (file.size > 5 * 1024 * 1024) {
+//       alert("Please choose an image smaller than 5MB.");
+//       e.target.value = "";
+//       return;
+//     }
+
+//     setProfileFile(file);
+//     setUploadSuccess(false);
+//     resetProfileCrop();
+
+//     const reader = new FileReader();
+//     reader.onload = (event) => setProfilePreview(event.target.result);
+//     reader.onerror = () => {
+//       alert("Unable to read this image. Please try another one.");
+//       setProfileFile(null);
+//       setProfilePreview(null);
+//     };
+//     reader.readAsDataURL(file);
+
+//     e.target.value = "";
+//   };
+
+//   const getCropMetrics = () => {
+//     const editor = profileEditorRef.current;
+//     if (!editor || !profileImageSize.width || !profileImageSize.height) {
+//       return null;
+//     }
+
+//     const editorSize = editor.clientWidth || 320;
+//     const ratio = profileImageSize.width / profileImageSize.height;
+
+//     let baseWidth;
+//     let baseHeight;
+
+//     if (ratio >= 1) {
+//       baseHeight = editorSize;
+//       baseWidth = editorSize * ratio;
+//     } else {
+//       baseWidth = editorSize;
+//       baseHeight = editorSize / ratio;
+//     }
+
+//     return { editorSize, baseWidth, baseHeight };
+//   };
+
+//   const clampCropPosition = (x, y, zoom = cropZoom) => {
+//     const metrics = getCropMetrics();
+//     if (!metrics) return { x, y };
+
+//     const scaledWidth = metrics.baseWidth * zoom;
+//     const scaledHeight = metrics.baseHeight * zoom;
+
+//     const minX = (metrics.editorSize - scaledWidth) / 2;
+//     const maxX = (scaledWidth - metrics.editorSize) / 2;
+//     const minY = (metrics.editorSize - scaledHeight) / 2;
+//     const maxY = (scaledHeight - metrics.editorSize) / 2;
+
+//     return {
+//       x: Math.max(minX, Math.min(maxX, x)),
+//       y: Math.max(minY, Math.min(maxY, y))
+//     };
+//   };
+
+//   const handleCropPointerDown = (e) => {
+//     if (!profilePreview) return;
+
+//     e.preventDefault();
+//     e.currentTarget.setPointerCapture?.(e.pointerId);
+
+//     setIsDraggingCrop(true);
+//     setCropDragStart({
+//       pointerX: e.clientX,
+//       pointerY: e.clientY,
+//       startX: cropX,
+//       startY: cropY
+//     });
+//   };
+
+//   const handleCropPointerMove = (e) => {
+//     if (!isDraggingCrop) return;
+
+//     const nextX = cropDragStart.startX + (e.clientX - cropDragStart.pointerX);
+//     const nextY = cropDragStart.startY + (e.clientY - cropDragStart.pointerY);
+//     const clamped = clampCropPosition(nextX, nextY);
+
+//     setCropX(clamped.x);
+//     setCropY(clamped.y);
+//   };
+
+//   const handleCropPointerUp = (e) => {
+//     try {
+//       e.currentTarget.releasePointerCapture?.(e.pointerId);
+//     } catch (_) {}
+//     setIsDraggingCrop(false);
+//   };
+
+//   const handleCropZoomChange = (value) => {
+//     const nextZoom = Number(value);
+//     setCropZoom(nextZoom);
+
+//     const clamped = clampCropPosition(cropX, cropY, nextZoom);
+//     setCropX(clamped.x);
+//     setCropY(clamped.y);
+//   };
+
+//   const getProfileImageStyle = () => {
+//     const metrics = getCropMetrics();
+
+//     if (!metrics) {
+//       return {
+//         width: "100%",
+//         height: "100%",
+//         objectFit: "cover"
+//       };
+//     }
+
+//     return {
+//       width: `${metrics.baseWidth}px`,
+//       height: `${metrics.baseHeight}px`,
+//       left: "50%",
+//       top: "50%",
+//       transform: `translate(calc(-50% + ${cropX}px), calc(-50% + ${cropY}px)) scale(${cropZoom})`,
+//       transformOrigin: "center center"
+//     };
+//   };
+
+//   const createCircularProfileImage = () => {
+//     return new Promise((resolve, reject) => {
+//       if (!profilePreview || !profileImageSize.width || !profileImageSize.height) {
+//         reject(new Error("No profile image is ready for cropping."));
+//         return;
+//       }
+
+//       const editorSize = profileEditorRef.current?.clientWidth || 320;
+//       const outputSize = 800;
+//       const image = document.createElement("img");
+
+//       image.onload = () => {
+//         try {
+//           const ratio = image.naturalWidth / image.naturalHeight;
+
+//           let baseWidth;
+//           let baseHeight;
+
+//           if (ratio >= 1) {
+//             baseHeight = editorSize;
+//             baseWidth = editorSize * ratio;
+//           } else {
+//             baseWidth = editorSize;
+//             baseHeight = editorSize / ratio;
+//           }
+
+//           const scale = outputSize / editorSize;
+//           const canvas = document.createElement("canvas");
+//           canvas.width = outputSize;
+//           canvas.height = outputSize;
+
+//           const ctx = canvas.getContext("2d");
+//           if (!ctx) throw new Error("Could not create image canvas.");
+
+//           // The uploaded file is clipped to a perfect circle.
+//           ctx.clearRect(0, 0, outputSize, outputSize);
+//           ctx.beginPath();
+//           ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2);
+//           ctx.closePath();
+//           ctx.clip();
+
+//           const drawWidth = baseWidth * cropZoom * scale;
+//           const drawHeight = baseHeight * cropZoom * scale;
+//           const drawX = (outputSize - drawWidth) / 2 + cropX * scale;
+//           const drawY = (outputSize - drawHeight) / 2 + cropY * scale;
+
+//           ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+
+//           resolve(canvas.toDataURL("image/png"));
+//         } catch (error) {
+//           reject(error);
+//         }
+//       };
+
+//       image.onerror = () => reject(new Error("Could not process the selected image."));
+//       image.src = profilePreview;
+//     });
 //   };
 
 //   const uploadProfileImage = async () => {
-//     if (!profileFile) {
+//     if (!profileFile || !profilePreview) {
 //       alert("Please select a profile image first!");
 //       return;
 //     }
@@ -183,25 +403,21 @@
 //     setUploading(true);
 
 //     try {
-//       const reader = new FileReader();
-//       reader.onload = async (event) => {
-//         try {
-//           const result = await profileApi.uploadImage(event.target.result);
-//           localStorage.setItem('profileImageUrl', result.url);
-//           setImages([{ id: Date.now(), src: result.url, type: 'profile' }]);
-//           setProfileFile(null);
-//           setProfilePreview(null);
-//           setUploading(false);
-//           setUploadSuccess(true);
-//           alert("✅ Profile image uploaded successfully!");
-//           window.location.reload();
-//         } catch (error) {
-//           console.error("Upload error:", error);
-//           alert("❌ Failed to upload image. Please try again.");
-//           setUploading(false);
-//         }
-//       };
-//       reader.readAsDataURL(profileFile);
+//       const croppedImage = await createCircularProfileImage();
+//       const result = await profileApi.uploadImage(croppedImage);
+
+//       localStorage.setItem("profileImageUrl", result.url);
+//       setImages([{ id: Date.now(), src: result.url, type: "profile" }]);
+
+//       setProfileFile(null);
+//       setProfilePreview(null);
+//       setProfileImageSize({ width: 0, height: 0 });
+//       resetProfileCrop();
+//       setUploading(false);
+//       setUploadSuccess(true);
+
+//       alert("✅ Profile image uploaded successfully!");
+//       window.location.reload();
 //     } catch (error) {
 //       console.error("Upload error:", error);
 //       alert("❌ Failed to upload image. Please try again.");
@@ -664,23 +880,35 @@
 //             {/* ============ PROFILE IMAGES TAB ============ */}
 //             {activeTab === "images" && (
 //               <div>
-//                 <div className="mb-4 border rounded-lg p-3 md:p-4 bg-gray-50">
-//                   <p className="text-sm font-semibold text-gray-700 mb-3">📸 Upload Profile Photo</p>
-                  
-//                   <div className="flex items-center gap-3 mb-3">
-//                     <label className="cursor-pointer flex-1">
-//                       <div className="border-2 border-dashed border-orange-300 rounded-lg p-3 text-center hover:bg-orange-50 transition-colors">
-//                         {profilePreview ? (
-//                           <div className="flex items-center justify-center gap-3">
-//                             <img src={profilePreview} alt="Preview" className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover" />
-//                             <span className="text-xs md:text-sm text-gray-600 truncate max-w-[100px]">{profileFile?.name}</span>
-//                           </div>
-//                         ) : (
-//                           <>
-//                             <Upload className="text-orange-500 mx-auto mb-1" size={20} />
-//                             <span className="text-xs md:text-sm text-gray-600">Select profile image</span>
-//                           </>
-//                         )}
+//                 <div className="mb-4 border rounded-xl p-3 md:p-4 bg-gray-50">
+//                   <div className="mb-4">
+//                     <p className="text-sm font-bold text-gray-800">
+//                       📸 Upload Profile Photo
+//                     </p>
+//                     <p className="text-xs text-gray-500 mt-1">
+//                       Position and zoom your picture before saving it.
+//                     </p>
+//                   </div>
+
+//                   {!profilePreview ? (
+//                     <label className="cursor-pointer block">
+//                       <div className="border-2 border-dashed border-orange-300 rounded-xl p-8 text-center hover:bg-orange-50 transition-colors">
+//                         <div className="w-20 h-20 mx-auto rounded-full bg-orange-100 flex items-center justify-center mb-4">
+//                           <Upload className="text-orange-500" size={30} />
+//                         </div>
+
+//                         <p className="font-semibold text-gray-700">
+//                           Select Profile Picture
+//                         </p>
+
+//                         <p className="text-xs text-gray-400 mt-1">
+//                           You can adjust the picture before uploading
+//                         </p>
+
+//                         <p className="text-[11px] text-gray-400 mt-3">
+//                           JPG, PNG or WEBP • Maximum 5MB
+//                         </p>
+
 //                         <input
 //                           type="file"
 //                           accept="image/*"
@@ -689,28 +917,205 @@
 //                         />
 //                       </div>
 //                     </label>
-//                   </div>
+//                   ) : (
+//                     <div>
+//                       {/* Circular profile-photo editor */}
+//                       <div
+//                         ref={profileEditorRef}
+//                         className={`relative mx-auto w-full max-w-[320px] aspect-square rounded-xl overflow-hidden bg-gray-950 select-none touch-none border-2 border-gray-800 ${
+//                           isDraggingCrop ? "cursor-grabbing" : "cursor-grab"
+//                         }`}
+//                         onPointerDown={handleCropPointerDown}
+//                         onPointerMove={handleCropPointerMove}
+//                         onPointerUp={handleCropPointerUp}
+//                         onPointerCancel={handleCropPointerUp}
+//                       >
+//                         <img
+//                           src={profilePreview}
+//                           alt="Profile crop editor"
+//                           onLoad={handleProfileImageLoaded}
+//                           draggable={false}
+//                           className="absolute max-w-none pointer-events-none select-none"
+//                           style={getProfileImageStyle()}
+//                         />
 
-//                   <button
-//                     onClick={uploadProfileImage}
-//                     disabled={!profileFile || uploading}
-//                     className={`w-full py-2 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm ${
-//                       profileFile && !uploading
-//                         ? "bg-orange-500 text-white hover:bg-orange-600"
-//                         : "bg-gray-300 text-gray-500 cursor-not-allowed"
-//                     }`}
-//                   >
-//                     {uploading ? (
-//                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-//                     ) : (
-//                       <>
-//                         <Send size={16} /> Upload Profile Photo
-//                       </>
-//                     )}
-//                   </button>
+//                         {/* Dark overlay outside the circular crop */}
+//                         <div
+//                           className="absolute inset-0 bg-black/55 pointer-events-none"
+//                           style={{
+//                             clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)"
+//                           }}
+//                         />
+
+//                         {/* Bright image inside the circular crop */}
+//                         <img
+//                           src={profilePreview}
+//                           alt=""
+//                           draggable={false}
+//                           className="absolute max-w-none pointer-events-none select-none"
+//                           style={{
+//                             ...getProfileImageStyle(),
+//                             clipPath: "circle(39% at 50% 50%)"
+//                           }}
+//                         />
+
+//                         {/* Circular crop border and guides */}
+//                         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+//                           <div className="w-[78%] aspect-square rounded-full border-[3px] border-white relative">
+//                             <div className="absolute left-1/2 top-0 bottom-0 border-l border-white/25" />
+//                             <div className="absolute top-1/2 left-0 right-0 border-t border-white/25" />
+//                           </div>
+//                         </div>
+
+//                         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/70 text-white text-[11px] px-3 py-1.5 rounded-full pointer-events-none whitespace-nowrap">
+//                           Drag to position your photo
+//                         </div>
+//                       </div>
+
+//                       {/* Zoom */}
+//                       <div className="mt-4">
+//                         <div className="flex items-center justify-between mb-1">
+//                           <span className="text-xs font-semibold text-gray-600">
+//                             Zoom
+//                           </span>
+//                           <span className="text-xs font-semibold text-orange-500">
+//                             {Math.round(cropZoom * 100)}%
+//                           </span>
+//                         </div>
+
+//                         <input
+//                           type="range"
+//                           min="1"
+//                           max="3"
+//                           step="0.01"
+//                           value={cropZoom}
+//                           onChange={(e) => handleCropZoomChange(e.target.value)}
+//                           className="w-full accent-orange-500 cursor-pointer"
+//                         />
+
+//                         <div className="flex justify-between text-[10px] text-gray-400">
+//                           <span>100%</span>
+//                           <span>300%</span>
+//                         </div>
+//                       </div>
+
+//                       {/* Controls */}
+//                       <div className="grid grid-cols-3 gap-2 mt-3">
+//                         <button
+//                           type="button"
+//                           onClick={() => handleCropZoomChange(Math.max(1, cropZoom - 0.1))}
+//                           className="py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-xs font-medium"
+//                         >
+//                           − Zoom
+//                         </button>
+
+//                         <button
+//                           type="button"
+//                           onClick={() => handleCropZoomChange(Math.min(3, cropZoom + 0.1))}
+//                           className="py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-xs font-medium"
+//                         >
+//                           + Zoom
+//                         </button>
+
+//                         <button
+//                           type="button"
+//                           onClick={resetProfileCrop}
+//                           className="py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-xs font-medium"
+//                         >
+//                           🔄 Reset
+//                         </button>
+//                       </div>
+
+//                       {/* Final preview */}
+//                       <div className="mt-5 flex flex-col items-center">
+//                         <p className="text-xs font-semibold text-gray-600 mb-2">
+//                           Final Profile Preview
+//                         </p>
+
+//                         <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-orange-500 bg-gray-200 shadow-lg">
+//                           {profileImageSize.width > 0 && (
+//                             <img
+//                               src={profilePreview}
+//                               alt="Final profile preview"
+//                               className="absolute max-w-none pointer-events-none select-none"
+//                               style={{
+//                                 width: `${(() => {
+//                                   const ratio =
+//                                     profileImageSize.width /
+//                                     profileImageSize.height;
+//                                   return ratio >= 1 ? 112 * ratio : 112;
+//                                 })()}px`,
+//                                 height: `${(() => {
+//                                   const ratio =
+//                                     profileImageSize.width /
+//                                     profileImageSize.height;
+//                                   return ratio >= 1 ? 112 : 112 / ratio;
+//                                 })()}px`,
+//                                 left: "50%",
+//                                 top: "50%",
+//                                 transform: `translate(calc(-50% + ${
+//                                   cropX *
+//                                   (112 /
+//                                     (profileEditorRef.current?.clientWidth || 320))
+//                                 }px), calc(-50% + ${
+//                                   cropY *
+//                                   (112 /
+//                                     (profileEditorRef.current?.clientWidth || 320))
+//                                 }px)) scale(${cropZoom})`,
+//                                 transformOrigin: "center center"
+//                               }}
+//                             />
+//                           )}
+//                         </div>
+//                       </div>
+
+//                       {/* Upload */}
+//                       <button
+//                         onClick={uploadProfileImage}
+//                         disabled={uploading || !profileFile}
+//                         className={`w-full mt-5 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm font-semibold ${
+//                           !uploading && profileFile
+//                             ? "bg-orange-500 text-white hover:bg-orange-600"
+//                             : "bg-gray-300 text-gray-500 cursor-not-allowed"
+//                         }`}
+//                       >
+//                         {uploading ? (
+//                           <>
+//                             <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+//                             Uploading...
+//                           </>
+//                         ) : (
+//                           <>
+//                             <Send size={16} />
+//                             Upload & Save Profile Picture
+//                           </>
+//                         )}
+//                       </button>
+
+//                       {/* Choose another image */}
+//                       <label className="block mt-2 cursor-pointer">
+//                         <div className="w-full py-2.5 text-center border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-sm text-gray-600 transition-colors">
+//                           🖼️ Choose Another Picture
+//                         </div>
+
+//                         <input
+//                           type="file"
+//                           accept="image/*"
+//                           onChange={handleProfileFileSelect}
+//                           className="hidden"
+//                         />
+//                       </label>
+
+//                       <p className="text-[11px] text-gray-400 text-center mt-3">
+//                         The circular crop is created in your browser before upload.
+//                       </p>
+//                     </div>
+//                   )}
 
 //                   {uploadSuccess && (
-//                     <p className="text-green-500 text-xs text-center mt-2">✅ Uploaded successfully!</p>
+//                     <p className="text-green-500 text-xs text-center mt-3">
+//                       ✅ Uploaded successfully!
+//                     </p>
 //                   )}
 //                 </div>
 
@@ -1380,8 +1785,8 @@
 // };
 
 // export default AdminUpload;
-
-
+// console.log("🚀 AdminUpload – version WITHOUT crop");"// force rebuild" 
+// "// v2" 
 
 import { useState, useEffect, useRef } from "react";
 import { 
@@ -1822,6 +2227,7 @@ const AdminUpload = () => {
     }
   };
 
+  // ✅ CORRECTED: now saves image URL to database
   const uploadProjectImage = async () => {
     if (!projectFile) {
       alert("Please select a project image first!");
@@ -1832,14 +2238,36 @@ const AdminUpload = () => {
       return;
     }
 
+    // Find the project by title
+    const projectToUpdate = customProjects.find(p => p.title === selectedProject);
+    if (!projectToUpdate) {
+      alert("Project not found!");
+      return;
+    }
+
     setUploading(true);
 
     try {
       const reader = new FileReader();
       reader.onload = async (event) => {
         try {
+          // 1. Upload to Cloudinary
           const result = await projectsApi.uploadImage(event.target.result, selectedProject);
-          
+
+          // 2. Update local state (for instant UI feedback)
+          const updatedProjects = customProjects.map(p =>
+            p.title === selectedProject ? { ...p, image: result.url } : p
+          );
+          setCustomProjects(updatedProjects);
+          localStorage.setItem('customProjects', JSON.stringify(updatedProjects));
+
+          // 3. 🔥 SAVE TO DATABASE – this is the missing step
+          await projectsApi.update(projectToUpdate.id, {
+            ...projectToUpdate,
+            image: result.url
+          });
+
+          // 4. Update uploaded images list in admin panel
           const newImage = {
             id: Date.now(),
             src: result.url,
@@ -1848,22 +2276,16 @@ const AdminUpload = () => {
             type: 'project',
             date: new Date().toLocaleString()
           };
-          const updatedImages = [newImage, ...projectImages];
-          setProjectImages(updatedImages);
-          localStorage.setItem('projectImages', JSON.stringify(updatedImages));
-          
-          const updatedProjects = customProjects.map(p => 
-            p.title === selectedProject ? { ...p, image: result.url } : p
-          );
-          setCustomProjects(updatedProjects);
-          localStorage.setItem('customProjects', JSON.stringify(updatedProjects));
+          setProjectImages([newImage, ...projectImages]);
+          localStorage.setItem('projectImages', JSON.stringify([newImage, ...projectImages]));
 
           setProjectFile(null);
           setProjectPreview(null);
           setSelectedProject("");
           setUploading(false);
-          
-          alert("✅ Project image uploaded successfully!");
+
+          alert("✅ Project image uploaded and saved to database!");
+          window.location.reload(); // optional, to refresh the page
         } catch (error) {
           console.error("Upload error:", error);
           alert("❌ Failed to upload image. Please try again.");
@@ -3168,5 +3590,3 @@ const AdminUpload = () => {
 };
 
 export default AdminUpload;
-console.log("🚀 AdminUpload – version WITHOUT crop");"// force rebuild" 
-"// v2" 
