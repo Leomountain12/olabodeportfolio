@@ -3167,3 +3167,4 @@ const AdminUpload = () => {
 };
 
 export default AdminUpload;
+console.log("🚀 AdminUpload – version WITHOUT crop");
