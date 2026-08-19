@@ -1396,8 +1396,9 @@ import { getSocialConfig, saveSocialConfig } from "../data/socialConfig";
 import { defaultProjects } from "../data/defaultData";
 import { projectsApi, profileApi, messagesApi } from "../api/client";
 import Cropper from 'react-easy-crop';
+import 'react-easy-crop/react-easy-crop.css';
 
-// ==================== CROP HELPERS ====================
+// ==================== FIXED CROP HELPERS ====================
 const createImage = (url) =>
   new Promise((resolve, reject) => {
     const image = new Image();
@@ -1410,9 +1411,11 @@ const createImage = (url) =>
 const getCroppedImg = async (imageSrc, pixelCrop) => {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
-  const ctx = canvas.getContext('2d');
+
   ctx.drawImage(
     image,
     pixelCrop.x,
@@ -1424,6 +1427,7 @@ const getCroppedImg = async (imageSrc, pixelCrop) => {
     pixelCrop.width,
     pixelCrop.height
   );
+
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
       resolve(blob);
@@ -1451,13 +1455,13 @@ const TikTokIcon = ({ size = 20, className = "" }) => (
 
 // ==================== MAIN COMPONENT ====================
 const AdminUpload = () => {
-  // ===== Auth states =====
+  // Auth states
   const [isAdmin, setIsAdmin] = useState(false);
   const [password, setPassword] = useState("");
   const [showLogin, setShowLogin] = useState(false);
   const [error, setError] = useState("");
   
-  // ===== UI states =====
+  // UI states
   const [activeTab, setActiveTab] = useState("images");
   const [showPanel, setShowPanel] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -1466,12 +1470,12 @@ const AdminUpload = () => {
   
   const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "secureleodcatalyst20242@g";
   
-  // ===== Profile image states =====
+  // Profile image states
   const [images, setImages] = useState([]);
   const [profileFile, setProfileFile] = useState(null);
   const [profilePreview, setProfilePreview] = useState(null);
   
-  // ===== Crop states =====
+  // Crop states
   const [showCropModal, setShowCropModal] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -1479,26 +1483,26 @@ const AdminUpload = () => {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [cropFile, setCropFile] = useState(null);
   
-  // ===== Project image states =====
+  // Project image states
   const [projectImages, setProjectImages] = useState([]);
   const [projectFile, setProjectFile] = useState(null);
   const [projectPreview, setProjectPreview] = useState(null);
   const [selectedProject, setSelectedProject] = useState("");
   
-  // ===== Messages states =====
+  // Messages states
   const [messages, setMessages] = useState([]);
   
-  // ===== Reply modal states =====
+  // Reply modal states
   const [showReplyModal, setShowReplyModal] = useState(false);
   const [currentReplyMessage, setCurrentReplyMessage] = useState(null);
   const [replyText, setReplyText] = useState("");
   const [replySending, setReplySending] = useState(false);
   
-  // ===== Settings states =====
+  // Settings states
   const [socialSettings, setSocialSettings] = useState(null);
   const [settingsSaved, setSettingsSaved] = useState(false);
   
-  // ===== Project management states =====
+  // Project management states
   const [customProjects, setCustomProjects] = useState([]);
   const [showAddProject, setShowAddProject] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
@@ -1518,15 +1522,13 @@ const AdminUpload = () => {
     image: ""
   });
 
-  // ===== EFFECTS =====
+  // Effects
   useEffect(() => {
     setSocialSettings(getSocialConfig());
   }, []);
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -1537,9 +1539,9 @@ const AdminUpload = () => {
         const projects = await projectsApi.getAll();
         setCustomProjects(projects);
         localStorage.setItem('customProjects', JSON.stringify(projects));
-        const messages = await messagesApi.getAll();
-        setMessages(messages);
-        localStorage.setItem('contactMessages', JSON.stringify(messages));
+        const msgs = await messagesApi.getAll();
+        setMessages(msgs);
+        localStorage.setItem('contactMessages', JSON.stringify(msgs));
         const profile = await profileApi.get();
         if (profile.image) {
           localStorage.setItem('profileImageUrl', profile.image);
@@ -1552,7 +1554,7 @@ const AdminUpload = () => {
     loadData();
   }, []);
 
-  // ==================== AUTH FUNCTIONS ====================
+  // ==================== AUTH ====================
   const handleLogin = (e) => {
     e.preventDefault();
     if (password === ADMIN_PASSWORD) {
@@ -1615,7 +1617,6 @@ const AdminUpload = () => {
     setUploading(true);
     try {
       const croppedBlob = await getCroppedImg(cropImageSrc, croppedAreaPixels);
-      const croppedFile = new File([croppedBlob], cropFile.name, { type: 'image/jpeg' });
       const reader = new FileReader();
       reader.onload = async (event) => {
         try {
@@ -1638,7 +1639,7 @@ const AdminUpload = () => {
           setUploading(false);
         }
       };
-      reader.readAsDataURL(croppedFile);
+      reader.readAsDataURL(croppedBlob);
     } catch (error) {
       console.error("Crop error:", error);
       alert("❌ Failed to crop image. Please try again.");
@@ -1889,23 +1890,15 @@ const AdminUpload = () => {
     }
   };
 
-  // ==================== HELPERS ====================
-  const getAllProjects = () => {
-    return customProjects.map(p => p.title);
-  };
-
+  const getAllProjects = () => customProjects.map(p => p.title);
   const unreadCount = messages.filter(msg => !msg.read).length;
 
   // ==================== SEED DEFAULT PROJECTS ====================
   const seedDefaultProjects = async () => {
     if (window.confirm("Load default projects? This will replace all custom projects.")) {
       try {
-        for (const project of customProjects) {
-          await projectsApi.delete(project.id);
-        }
-        for (const project of defaultProjects) {
-          await projectsApi.create(project);
-        }
+        for (const project of customProjects) await projectsApi.delete(project.id);
+        for (const project of defaultProjects) await projectsApi.create(project);
         const projects = await projectsApi.getAll();
         setCustomProjects(projects);
         localStorage.setItem('customProjects', JSON.stringify(projects));
