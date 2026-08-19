@@ -1385,8 +1385,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { 
-  Upload, X, Lock, Unlock, Image, Trash2, 
-  Mail, FolderOpen, Settings, CheckCircle, 
+  Upload, X, Lock, Unlock, 
+  Image as LucideImage,   // ✅ FIX: renamed to avoid shadowing native Image
+  Trash2, Mail, FolderOpen, Settings, CheckCircle, 
   Send, User, Briefcase, MessageCircle, Plus,
   ExternalLink, Edit, Save, Link as LinkIcon,
   Github, Eye, EyeOff, Phone, Twitter, Instagram, 
