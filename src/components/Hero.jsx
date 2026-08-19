@@ -107,7 +107,7 @@ const Hero = () => {
       <section className="min-h-[90vh] flex items-center relative overflow-hidden">
         <div className="container-custom py-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
+            {/* Left Content – same as before */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -170,7 +170,7 @@ const Hero = () => {
               </div>
             </motion.div>
 
-            {/* Right Content – Profile Image (Clickable) */}
+            {/* Right Content – Profile Image */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -178,18 +178,18 @@ const Hero = () => {
               className="relative flex justify-center"
             >
               <div className="relative w-72 h-72 sm:w-96 sm:h-96">
-                {/* ✅ Clickable image wrapper */}
+                {/* ✅ Only added: hover scale + click to open lightbox */}
                 <div
-                  className="cursor-pointer group block"
+                  className="cursor-pointer transition-transform duration-300 hover:scale-105"
                   onClick={() => setShowLightbox(true)}
                 >
                   <DisplayImage
-                    className="w-full h-full rounded-full object-cover border-4 border-orange-500/30 shadow-2xl transition-all duration-300 group-hover:border-orange-400 group-hover:shadow-orange-500/20"
+                    // ✅ EXACT original design – unchanged
+                    className="w-full h-full rounded-full object-cover border-4 border-orange-500/20 shadow-2xl"
                     alt="Olabode Olamide - Leodcatalyst"
                     fallbackText="Upload your photo"
                   />
                 </div>
-                {/* Floating icons */}
                 <div className="absolute -top-4 -right-4 p-3 bg-white/10 backdrop-blur-md rounded-xl shadow-lg animate-bounce border border-white/20">
                   <Zap className="text-orange-400" size={24} />
                 </div>
@@ -202,7 +202,7 @@ const Hero = () => {
         </div>
       </section>
 
-      {/* ⭐ Lightbox / Modal for full-size image */}
+      {/* Lightbox – no design change, just full image */}
       <AnimatePresence>
         {showLightbox && (
           <motion.div
@@ -212,7 +212,6 @@ const Hero = () => {
             className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setShowLightbox(false)}
           >
-            {/* Close button */}
             <button
               onClick={() => setShowLightbox(false)}
               className="absolute top-4 right-4 z-10 text-white/80 hover:text-white transition-colors p-2 rounded-full bg-black/50 hover:bg-black/70"
@@ -221,14 +220,13 @@ const Hero = () => {
               <X size={32} />
             </button>
 
-            {/* Image container */}
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", damping: 20 }}
               className="max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center"
-              onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+              onClick={(e) => e.stopPropagation()}
             >
               <DisplayImage
                 className="w-full h-full object-contain rounded-lg"
