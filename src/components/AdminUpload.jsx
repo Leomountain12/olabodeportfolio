@@ -1791,7 +1791,7 @@
 import { useState, useEffect, useRef } from "react";
 import { 
   Upload, X, Lock, Unlock, 
-  Image as LucideImage,   // ✅ FIX: renamed to avoid shadowing native Image
+  Image as LucideImage,
   Trash2, Mail, FolderOpen, Settings, CheckCircle, 
   Send, User, Briefcase, MessageCircle, Plus,
   ExternalLink, Edit, Save, Link as LinkIcon,
@@ -1802,7 +1802,7 @@ import { categories as allCategories } from "../data/projects";
 import { getSocialConfig, saveSocialConfig } from "../data/socialConfig";
 import { defaultProjects } from "../data/defaultData";
 import { projectsApi, profileApi, messagesApi } from "../api/client";
-console.log("🚀 AdminUpload – version WITHOUT crop");
+console.log("🚀 AdminUpload – version WITH database fix");
 
 // Custom TikTok Icon (SVG)
 const TikTokIcon = ({ size = 20, className = "" }) => (
@@ -1914,10 +1914,11 @@ const AdminUpload = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load projects
+        // Load projects and map _id to id for consistent access
         const projects = await projectsApi.getAll();
-        setCustomProjects(projects);
-        localStorage.setItem('customProjects', JSON.stringify(projects));
+        const projectsWithId = projects.map(p => ({ ...p, id: p._id }));
+        setCustomProjects(projectsWithId);
+        localStorage.setItem('customProjects', JSON.stringify(projectsWithId));
         
         // Load messages
         const messages = await messagesApi.getAll();
@@ -2227,7 +2228,7 @@ const AdminUpload = () => {
     }
   };
 
-  // ✅ CORRECTED: now saves image URL to database
+  // ✅ FIXED: uses _id for database update
   const uploadProjectImage = async () => {
     if (!projectFile) {
       alert("Please select a project image first!");
@@ -2238,7 +2239,7 @@ const AdminUpload = () => {
       return;
     }
 
-    // Find the project by title
+    // Find the project by title (using the mapped 'id' property)
     const projectToUpdate = customProjects.find(p => p.title === selectedProject);
     if (!projectToUpdate) {
       alert("Project not found!");
@@ -2261,8 +2262,8 @@ const AdminUpload = () => {
           setCustomProjects(updatedProjects);
           localStorage.setItem('customProjects', JSON.stringify(updatedProjects));
 
-          // 3. 🔥 SAVE TO DATABASE – this is the missing step
-          await projectsApi.update(projectToUpdate.id, {
+          // 3. 🔥 SAVE TO DATABASE using _id (MongoDB's native id)
+          await projectsApi.update(projectToUpdate._id, {
             ...projectToUpdate,
             image: result.url
           });
@@ -2325,7 +2326,7 @@ const AdminUpload = () => {
   const handleEditProject = (project) => {
     setEditingProject(project);
     setProjectForm({
-      id: project.id,
+      id: project.id, // now we have id from mapping
       title: project.title,
       category: project.category,
       description: project.description,
@@ -2525,8 +2526,9 @@ const AdminUpload = () => {
         }
         
         const projects = await projectsApi.getAll();
-        setCustomProjects(projects);
-        localStorage.setItem('customProjects', JSON.stringify(projects));
+        const projectsWithId = projects.map(p => ({ ...p, id: p._id }));
+        setCustomProjects(projectsWithId);
+        localStorage.setItem('customProjects', JSON.stringify(projectsWithId));
         alert("✅ Default projects loaded!");
         window.location.reload();
       } catch (error) {
