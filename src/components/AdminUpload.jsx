@@ -1397,6 +1397,7 @@ import { categories as allCategories } from "../data/projects";
 import { getSocialConfig, saveSocialConfig } from "../data/socialConfig";
 import { defaultProjects } from "../data/defaultData";
 import { projectsApi, profileApi, messagesApi } from "../api/client";
+console.log("🚀 AdminUpload – version WITHOUT crop");
 
 // Custom TikTok Icon (SVG)
 const TikTokIcon = ({ size = 20, className = "" }) => (
@@ -3167,4 +3168,4 @@ const AdminUpload = () => {
 };
 
 export default AdminUpload;
-console.log("🚀 AdminUpload – version WITHOUT crop");
+console.log("🚀 AdminUpload – version WITHOUT crop");"// force rebuild" 
