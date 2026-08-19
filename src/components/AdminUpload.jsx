@@ -1397,7 +1397,7 @@ import { defaultProjects } from "../data/defaultData";
 import { projectsApi, profileApi, messagesApi } from "../api/client";
 import Cropper from 'react-easy-crop';
 
-// -------------------- Crop helper (inline) --------------------
+// ==================== CROP HELPERS ====================
 const createImage = (url) =>
   new Promise((resolve, reject) => {
     const image = new Image();
@@ -1410,9 +1410,9 @@ const createImage = (url) =>
 const getCroppedImg = async (imageSrc, pixelCrop) => {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
+  const ctx = canvas.getContext('2d');
   ctx.drawImage(
     image,
     pixelCrop.x,
@@ -1430,9 +1430,8 @@ const getCroppedImg = async (imageSrc, pixelCrop) => {
     }, 'image/jpeg');
   });
 };
-// --------------------------------------------------------------
 
-// Custom TikTok Icon
+// ==================== CUSTOM TIKTOK ICON ====================
 const TikTokIcon = ({ size = 20, className = "" }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -1450,14 +1449,15 @@ const TikTokIcon = ({ size = 20, className = "" }) => (
   </svg>
 );
 
+// ==================== MAIN COMPONENT ====================
 const AdminUpload = () => {
-  // Auth states
+  // ===== Auth states =====
   const [isAdmin, setIsAdmin] = useState(false);
   const [password, setPassword] = useState("");
   const [showLogin, setShowLogin] = useState(false);
   const [error, setError] = useState("");
   
-  // UI states
+  // ===== UI states =====
   const [activeTab, setActiveTab] = useState("images");
   const [showPanel, setShowPanel] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -1466,12 +1466,12 @@ const AdminUpload = () => {
   
   const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "secureleodcatalyst20242@g";
   
-  // Profile image states
+  // ===== Profile image states =====
   const [images, setImages] = useState([]);
   const [profileFile, setProfileFile] = useState(null);
   const [profilePreview, setProfilePreview] = useState(null);
   
-  // Crop states
+  // ===== Crop states =====
   const [showCropModal, setShowCropModal] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -1479,26 +1479,26 @@ const AdminUpload = () => {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [cropFile, setCropFile] = useState(null);
   
-  // Project image states
+  // ===== Project image states =====
   const [projectImages, setProjectImages] = useState([]);
   const [projectFile, setProjectFile] = useState(null);
   const [projectPreview, setProjectPreview] = useState(null);
   const [selectedProject, setSelectedProject] = useState("");
   
-  // Messages states
+  // ===== Messages states =====
   const [messages, setMessages] = useState([]);
   
-  // Reply modal states
+  // ===== Reply modal states =====
   const [showReplyModal, setShowReplyModal] = useState(false);
   const [currentReplyMessage, setCurrentReplyMessage] = useState(null);
   const [replyText, setReplyText] = useState("");
   const [replySending, setReplySending] = useState(false);
   
-  // Settings states
+  // ===== Settings states =====
   const [socialSettings, setSocialSettings] = useState(null);
   const [settingsSaved, setSettingsSaved] = useState(false);
   
-  // Project management states
+  // ===== Project management states =====
   const [customProjects, setCustomProjects] = useState([]);
   const [showAddProject, setShowAddProject] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
@@ -1518,12 +1518,11 @@ const AdminUpload = () => {
     image: ""
   });
 
-  // Load social settings
+  // ===== EFFECTS =====
   useEffect(() => {
     setSocialSettings(getSocialConfig());
   }, []);
 
-  // Check screen size for mobile
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
@@ -1532,18 +1531,15 @@ const AdminUpload = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Load all data from backend
   useEffect(() => {
     const loadData = async () => {
       try {
         const projects = await projectsApi.getAll();
         setCustomProjects(projects);
         localStorage.setItem('customProjects', JSON.stringify(projects));
-        
         const messages = await messagesApi.getAll();
         setMessages(messages);
         localStorage.setItem('contactMessages', JSON.stringify(messages));
-        
         const profile = await profileApi.get();
         if (profile.image) {
           localStorage.setItem('profileImageUrl', profile.image);
@@ -1557,7 +1553,6 @@ const AdminUpload = () => {
   }, []);
 
   // ==================== AUTH FUNCTIONS ====================
-  
   const handleLogin = (e) => {
     e.preventDefault();
     if (password === ADMIN_PASSWORD) {
@@ -1586,8 +1581,7 @@ const AdminUpload = () => {
     setShowCropModal(false);
   };
 
-  // ==================== PROFILE IMAGE FUNCTIONS ====================
-  
+  // ==================== PROFILE IMAGE UPLOAD (WITH CROP) ====================
   const handleProfileFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -1622,8 +1616,6 @@ const AdminUpload = () => {
     try {
       const croppedBlob = await getCroppedImg(cropImageSrc, croppedAreaPixels);
       const croppedFile = new File([croppedBlob], cropFile.name, { type: 'image/jpeg' });
-      
-      // Convert to base64 for the API
       const reader = new FileReader();
       reader.onload = async (event) => {
         try {
@@ -1655,7 +1647,6 @@ const AdminUpload = () => {
   };
 
   // ==================== PROJECT IMAGE FUNCTIONS ====================
-  
   const handleProjectFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -1677,15 +1668,12 @@ const AdminUpload = () => {
       alert("Please select a project!");
       return;
     }
-
     setUploading(true);
-
     try {
       const reader = new FileReader();
       reader.onload = async (event) => {
         try {
           const result = await projectsApi.uploadImage(event.target.result, selectedProject);
-          
           const newImage = {
             id: Date.now(),
             src: result.url,
@@ -1697,18 +1685,15 @@ const AdminUpload = () => {
           const updatedImages = [newImage, ...projectImages];
           setProjectImages(updatedImages);
           localStorage.setItem('projectImages', JSON.stringify(updatedImages));
-          
           const updatedProjects = customProjects.map(p => 
             p.title === selectedProject ? { ...p, image: result.url } : p
           );
           setCustomProjects(updatedProjects);
           localStorage.setItem('customProjects', JSON.stringify(updatedProjects));
-
           setProjectFile(null);
           setProjectPreview(null);
           setSelectedProject("");
           setUploading(false);
-          
           alert("✅ Project image uploaded successfully!");
         } catch (error) {
           console.error("Upload error:", error);
@@ -1724,8 +1709,7 @@ const AdminUpload = () => {
     }
   };
 
-  // ==================== PROJECT CRUD FUNCTIONS ====================
-  
+  // ==================== PROJECT CRUD ====================
   const handleAddProject = () => {
     setEditingProject(null);
     setProjectForm({
@@ -1771,10 +1755,8 @@ const AdminUpload = () => {
       alert("Please fill in Title, Category, and Description!");
       return;
     }
-
     const techArray = projectForm.tech ? projectForm.tech.split(",").map(t => t.trim()).filter(t => t) : [];
     const featuresArray = projectForm.features ? projectForm.features.split("\n").map(f => f.trim()).filter(f => f) : [];
-    
     const newProject = {
       title: projectForm.title,
       category: projectForm.category,
@@ -1789,7 +1771,6 @@ const AdminUpload = () => {
       features: featuresArray,
       image: projectForm.image || "https://via.placeholder.com/600x400?text=Project+Image"
     };
-
     try {
       let result;
       if (editingProject) {
@@ -1797,18 +1778,15 @@ const AdminUpload = () => {
       } else {
         result = await projectsApi.create(newProject);
       }
-      
       let updatedProjects;
       if (editingProject) {
         updatedProjects = customProjects.map(p => p.id === editingProject.id ? result : p);
       } else {
         updatedProjects = [...customProjects, result];
       }
-      
       setCustomProjects(updatedProjects);
       localStorage.setItem('customProjects', JSON.stringify(updatedProjects));
       alert(editingProject ? "✅ Project updated!" : "✅ New project added!");
-      
       setShowAddProject(false);
       setEditingProject(null);
       setProjectForm({
@@ -1849,20 +1827,7 @@ const AdminUpload = () => {
     }
   };
 
-  // ==================== DELETE FUNCTIONS ====================
-  
-  const deleteImage = (id, type) => {
-    if (type === 'profile') {
-      const updatedImages = images.filter(img => img.id !== id);
-      setImages(updatedImages);
-      localStorage.setItem('adminImages', JSON.stringify(updatedImages));
-    } else {
-      const updatedImages = projectImages.filter(img => img.id !== id);
-      setProjectImages(updatedImages);
-      localStorage.setItem('projectImages', JSON.stringify(updatedImages));
-    }
-  };
-
+  // ==================== MESSAGE FUNCTIONS ====================
   const deleteMessage = async (id) => {
     if (window.confirm("Delete this message?")) {
       try {
@@ -1891,8 +1856,7 @@ const AdminUpload = () => {
     }
   };
 
-  // ==================== SETTINGS FUNCTIONS ====================
-  
+  // ==================== SETTINGS ====================
   const handleSettingsChange = (field, value) => {
     setSocialSettings({ ...socialSettings, [field]: value });
   };
@@ -1925,8 +1889,7 @@ const AdminUpload = () => {
     }
   };
 
-  // ==================== HELPER FUNCTIONS ====================
-  
+  // ==================== HELPERS ====================
   const getAllProjects = () => {
     return customProjects.map(p => p.title);
   };
@@ -1934,7 +1897,6 @@ const AdminUpload = () => {
   const unreadCount = messages.filter(msg => !msg.read).length;
 
   // ==================== SEED DEFAULT PROJECTS ====================
-  
   const seedDefaultProjects = async () => {
     if (window.confirm("Load default projects? This will replace all custom projects.")) {
       try {
@@ -1957,7 +1919,6 @@ const AdminUpload = () => {
   };
 
   // ==================== LOGIN MODAL ====================
-  
   if (showLogin) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
@@ -2001,7 +1962,6 @@ const AdminUpload = () => {
   }
 
   // ==================== ADMIN DASHBOARD ====================
-  
   return (
     <div className="fixed bottom-4 right-4 z-50">
       {/* Hidden Admin Trigger */}
@@ -2131,11 +2091,10 @@ const AdminUpload = () => {
                     </label>
                   </div>
 
-                  {/* If a file is selected, show Crop button */}
                   {profileFile && !showCropModal && (
                     <button
                       onClick={() => setShowCropModal(true)}
-                      className="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                      className="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
                     >
                       ✂️ Crop & Upload
                     </button>
